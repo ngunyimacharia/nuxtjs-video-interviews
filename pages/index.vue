@@ -24,8 +24,12 @@
           <div class="relative flex items-stretch flex-grow focus-within:z-10">
             <input required v-model="interviewee" type="text" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-l-md pl-10 sm:text-sm border-gray-300" placeholder="Enter your name...">
           </div>
-          <button type="submit" class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-indigo-600 text-sm font-medium rounded-r-md  text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
-            Submit interview
+          <button type="submit" :disabled="submitting" class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-indigo-600 text-sm font-medium rounded-r-md  text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
+            <svg v-if="submitting" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{submitting ? 'Uploading' : 'Submit interview'}}
           </button>
         </div>
       </form>
@@ -40,27 +44,31 @@ export default {
   data(){
     return {
       interviewee:null,
+      submitting:false,
       questions:[
         {
           question: "Tell me something about yourself.",
           recording:false,
           recorder:null,
           recordedChunks:[],
-          answer:null
+          answer:null,
+          uploading:false
         },
         {
           question: "How did you hear about this position?",
           recording:false,
           recorder:null,
           recordedChunks:[],
-          answer:null
+          answer:null,
+          uploading:false
         },
         {
           question: "Why do you want to work here?",
           recording:false,
           recorder:null,
           recordedChunks:[],
-          answer:null
+          answer:null,
+          uploading:false
         },
       ]
     }
@@ -100,8 +108,40 @@ export default {
         document.getElementById(`player-${index}`).srcObject = null;
         this.questions[index].answer = URL.createObjectURL(new Blob(this.questions[index].recordedChunks), {type: 'video/mp4'});
     },
+    blobToBase64(blob) {
+      return new Promise((resolve, _) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    },
     submit(){
-      alert("Submitting");
+      if(this.questions.filter(question => question.answer === null).length){
+        alert("Some questions have not been answered. Answer all questions before submitting");
+        return;
+      }
+      this.submitting = true;
+      Promise.all(this.questions.map(async (question,index) => {
+        this.questions[index].uploading=true;
+        const blob = new Blob(question.recordedChunks);
+        const base64 = await this.blobToBase64(blob);
+        await this.$cloudinary.upload(
+          base64, 
+          {
+            public_id: `Question-${index+1}`,
+            folder: `nuxtjs-video-interviews/${this.interviewee}`,
+            upload_preset: "default-preset",
+            context:`question=${question.question}`
+          }
+        );
+        this.questions[index].uploading=true;
+      })).then(() => {
+        this.submitting = false;
+        alert("Upload successful, thank you.");
+      }).catch(() => {
+        this.submitting = false;
+        alert("Upload failed. Please try again.");
+      });
     }
   }
 }
