@@ -19,7 +19,7 @@
     </div>
     <div class="my-5 text-right flex flex-row-reverse">
       
-      <form class="w-1/3" @submit.prevent="submit">
+      <form @submit.prevent="submit">
         <div class="mt-1 flex border border-gray-300  rounded-md shadow-sm">
           <div class="relative flex items-stretch flex-grow focus-within:z-10">
             <input required v-model="interviewee" type="text" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-l-md pl-10 sm:text-sm border-gray-300" placeholder="Enter your name...">
